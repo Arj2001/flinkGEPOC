@@ -23,25 +23,24 @@ import io.restassured.response.Response;
 import io.restassured.specification.RequestSpecification;
 import org.apache.flink.api.common.eventtime.WatermarkStrategy;
 import org.apache.flink.api.common.serialization.SimpleStringSchema;
-import org.apache.flink.api.connector.sink.Sink;
-import org.apache.flink.api.java.functions.KeySelector;
 import org.apache.flink.connector.base.DeliveryGuarantee;
 import org.apache.flink.connector.kafka.sink.KafkaRecordSerializationSchema;
 import org.apache.flink.connector.kafka.sink.KafkaSink;
 import org.apache.flink.connector.kafka.source.KafkaSource;
 import org.apache.flink.connector.kafka.source.enumerator.initializer.OffsetsInitializer;
+import org.apache.flink.streaming.api.datastream.AllWindowedStream;
 import org.apache.flink.streaming.api.datastream.DataStream;
+import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.ProcessFunction;
-import org.apache.flink.streaming.api.functions.sink.SinkFunction;
 import org.apache.flink.streaming.api.functions.windowing.AllWindowFunction;
-import org.apache.flink.streaming.api.functions.windowing.WindowFunction;
-import org.apache.flink.streaming.api.windowing.assigners.TumblingEventTimeWindows;
+import org.apache.flink.streaming.api.windowing.assigners.SlidingProcessingTimeWindows;
 import org.apache.flink.streaming.api.windowing.assigners.TumblingProcessingTimeWindows;
 import org.apache.flink.streaming.api.windowing.time.Time;
 import org.apache.flink.streaming.api.windowing.windows.TimeWindow;
 import org.apache.flink.util.Collector;
 
+import javax.xml.crypto.Data;
 import java.util.ArrayList;
 
 /**
@@ -58,25 +57,15 @@ import java.util.ArrayList;
  */
 public class DataStreamJob {
 
-    public static void main(String[] args) throws Exception {
+    long time;
+
+    public void job() throws Exception {
         // Sets up the execution environment, which is the main entry point
         // to building Flink applications.
         final StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
 
-
-//		 Here, you can start creating your execution plan for Flink.
-//
-//		 Start with getting some data from the environment, like
-//		env.fromSequence(1, 10);
-/*		DataStream<Long> dataStream = env.fromSequence(1, 100000);
-		dataStream.print();*/
-        KafkaSource<String> source = KafkaSource.<String>builder()
-                .setBootstrapServers("localhost:9092")
-                .setTopics("input-topic")
-                .setGroupId("my-group")
-                .setStartingOffsets(OffsetsInitializer.latest())
-                .setValueOnlyDeserializer(new SimpleStringSchema())
-                .build();
+        /*Kafka consumer*/
+        KafkaSource<String> source = KafkaSource.<String>builder().setBootstrapServers("localhost:9092").setTopics("input-topic").setGroupId("my-group").setStartingOffsets(OffsetsInitializer.latest()).setValueOnlyDeserializer(new SimpleStringSchema()).build();
         DataStream<String> kafkaConsumer = env.fromSource(source, WatermarkStrategy.noWatermarks(), "Kafka Source");
         DataStream<Double> doubleDataStream = kafkaConsumer.map(value -> {
             try {
@@ -85,69 +74,32 @@ public class DataStreamJob {
                 return 240.0;
             }
         });
-//		doubleDataStream.print();
-//        DataStream<Double> output = doubleDataStream
-//                .windowAll(TumblingProcessingTimeWindows.of(Time.seconds(10)))
-//                .apply(new AllWindowFunction<Double, Object, TimeWindow>() {
-//                    @Override
-//                    public void apply(TimeWindow timeWindow, Iterable<Double> iterable, Collector<Object> collector) throws Exception {
-//
-//                        for (Double s : iterable) {
-//                            collector.collect(s);
-//                        }
-//                    }
-//                });
-        DataStream<String> output = doubleDataStream
-                .windowAll(TumblingProcessingTimeWindows.of(Time.seconds(60)))
-                .apply(new AllWindowFunction<Double, String, TimeWindow>() {
-                    @Override
-                    public void apply(TimeWindow timeWindow, Iterable<Double> iterable, Collector<String> collector) throws Exception {
-//						double sum = 0;
-//						int count = 0;
-                        ArrayList<Double> list = new ArrayList<>();
-                        for (Double s : iterable) {
-                            list.add(s);
-                        }
-                        collector.collect(list.toString());
-                    }
-                }).process(new ProcessFunction<String, String>() {
-                    @Override
-                    public void processElement(String s, Context context, Collector<String> collector) throws Exception {
-                        RequestSpecification request = RestAssured.given();
-                        request.header("Content-Type", "application/json");
-                        request.body(s);
-                        Response response = request.post("http://localhost:5000/");
-                        collector.collect(response.getBody().toString());
 
-                    }
-                });
+        DataStream<String> output = doubleDataStream.windowAll(SlidingProcessingTimeWindows.of(Time.seconds(10), Time.seconds(5))).apply(new AllWindowFunction<Double, String, TimeWindow>() {
+            @Override
+            public void apply(TimeWindow timeWindow, Iterable<Double> iterable, Collector<String> collector) throws Exception {
+                ArrayList<Double> list = new ArrayList<>();
+                for (Double s : iterable) {
+                    list.add(s);
+                }
+                collector.collect(list.toString());
+            }
+        }).process(new ProcessFunction<String, String>() {
+            @Override
+            public void processElement(String o, Context context, Collector<String> collector) throws Exception {
+                RequestSpecification request = RestAssured.given();
+                request.header("Content-Type", "application/json");
+                request.body(o);
+                Response response = request.post("http://localhost:5000/");
+                collector.collect(response.getBody().asString());
+            }
+        });
+
+
         output.print();
-        KafkaSink<String> sink = KafkaSink.<String>builder()
-                .setBootstrapServers("localhost:9092")
-                .setRecordSerializer(KafkaRecordSerializationSchema.builder()
-                        .setTopic("output-topic")
-                        .setValueSerializationSchema(new SimpleStringSchema())
-                        .build()
-                )
-                .setDeliveryGuarantee(DeliveryGuarantee.AT_LEAST_ONCE)
-                .build();
+        /*kafkaProducer*/
+        KafkaSink<String> sink = KafkaSink.<String>builder().setBootstrapServers("localhost:9092").setRecordSerializer(KafkaRecordSerializationSchema.builder().setTopic("output-topic").setValueSerializationSchema(new SimpleStringSchema()).build()).setDeliveryGuarantee(DeliveryGuarantee.AT_LEAST_ONCE).build();
         output.sinkTo(sink);
-
-//		output.map
-//        output.print();
-
-//		 then, transform the resulting DataStream<Long> using operations
-//		 like
-//		 	.filter()
-//		 	.flatMap()
-//		 	.window()
-//		 	.process()
-
-//		 and many more.
-//		 Have a look at the programming guide:
-//
-//		 https://nightlies.apache.org/flink/flink-docs-stable/
-
 
         // Execute program, beginning computation.
         env.execute("Flink Java API Skeleton");
