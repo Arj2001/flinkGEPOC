@@ -64,6 +64,7 @@ public class DataStreamJob {
         // to building Flink applications.
         final StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
 
+//        env.setParallelism(3);
         /*Kafka consumer*/
         KafkaSource<String> source = KafkaSource.<String>builder().setBootstrapServers("localhost:9092").setTopics("input-topic").setGroupId("my-group").setStartingOffsets(OffsetsInitializer.latest()).setValueOnlyDeserializer(new SimpleStringSchema()).build();
         DataStream<String> kafkaConsumer = env.fromSource(source, WatermarkStrategy.noWatermarks(), "Kafka Source");
@@ -78,22 +79,24 @@ public class DataStreamJob {
         DataStream<String> output = doubleDataStream.windowAll(SlidingProcessingTimeWindows.of(Time.seconds(10), Time.seconds(5))).apply(new AllWindowFunction<Double, String, TimeWindow>() {
             @Override
             public void apply(TimeWindow timeWindow, Iterable<Double> iterable, Collector<String> collector) throws Exception {
+                long time = System.currentTimeMillis();
                 ArrayList<Double> list = new ArrayList<>();
                 for (Double s : iterable) {
                     list.add(s);
                 }
-                collector.collect(list.toString());
-            }
-        }).process(new ProcessFunction<String, String>() {
-            @Override
-            public void processElement(String o, Context context, Collector<String> collector) throws Exception {
                 RequestSpecification request = RestAssured.given();
                 request.header("Content-Type", "application/json");
-                request.body(o);
+                request.body(list.toString());
+//                long time = System.currentTimeMillis();
+                System.out.println("Time is taken" + (System.currentTimeMillis() - time) + "ms \n \n \n");
                 Response response = request.post("http://localhost:5000/");
                 collector.collect(response.getBody().asString());
+                collector.collect(list.toString());
+
             }
         });
+
+
 
 
         output.print();
