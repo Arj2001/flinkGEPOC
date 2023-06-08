@@ -1,0 +1,45 @@
+
+l
+java:S1192Y"JDefine a constant instead of duplicating this literal "component" 3 times.(®ÞÍ£ÿÿÿÿÿ8Ûè¢Ê‰1
+X	java:S125I"<This block of commented-out lines of code should be removed.( Œ·×8é¢Ê‰1
+_
+java:S1854m"=Remove this useless assignment to local variable "arrayNode".(òÎþ™þÿÿÿÿ8¨é¢Ê‰1
+Z	java:S106l"9Replace this use of System.out or System.err by a logger.(Ž³ð¸ûÿÿÿÿ8«é¢Ê‰1
+P
+java:S1481m".Remove this unused "arrayNode" local variable.(òÎþ™þÿÿÿÿ8«é¢Ê‰1
+]	java:S125s"<This block of commented-out lines of code should be removed.(ª¿éüúÿÿÿÿ8¬é¢Ê‰1
+^	java:S125”"<This block of commented-out lines of code should be removed.(‰ÍšÉýÿÿÿÿ8¬é¢Ê‰1
+Y
+java:S1128"7Remove this unused import 'io.restassured.RestAssured'.(ºÉµ±ùÿÿÿÿ8‡³£Ê‰1
+_
+java:S1128"=Remove this unused import 'io.restassured.response.Response'.(äŽ¯»ùÿÿÿÿ8‡³£Ê‰1
+p
+java:S1128"NRemove this unused import 'io.restassured.specification.RequestSpecification'.(«‘ÏÜþÿÿÿÿ8‡³£Ê‰1
+k
+java:S1128"NRemove this unused import 'org.apache.flink.connector.base.DeliveryGuarantee'.(ÛËå8‡³£Ê‰1
+ƒ
+java:S1128"aRemove this unused import 'org.apache.flink.connector.kafka.sink.KafkaRecordSerializationSchema'.(â¿ŒÊþÿÿÿÿ8‡³£Ê‰1
+n
+java:S1128"LRemove this unused import 'org.apache.flink.connector.kafka.sink.KafkaSink'.(ñ“µúÿÿÿÿ8‡³£Ê‰1
+z
+java:S1128$"XRemove this unused import 'org.apache.flink.streaming.api.datastream.AllWindowedStream'.(‹‰Ûºúÿÿÿÿ8‡³£Ê‰1
+~
+java:S1128&"aRemove this unused import 'org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator'.(íÔý÷8‡³£Ê‰1
+w
+java:S1128("URemove this unused import 'org.apache.flink.streaming.api.functions.ProcessFunction'.(âƒœ¯ÿÿÿÿÿ8‡³£Ê‰1
+~
+java:S1128)"aRemove this unused import 'org.apache.flink.streaming.api.functions.windowing.AllWindowFunction'.(¿Ð½à8‡³£Ê‰1
+Ž
+java:S1128*"lRemove this unused import 'org.apache.flink.streaming.api.windowing.assigners.SlidingProcessingTimeWindows'.( šÏêüÿÿÿÿ8‡³£Ê‰1
+‰
+java:S1128+"mRemove this unused import 'org.apache.flink.streaming.api.windowing.assigners.TumblingProcessingTimeWindows'.(ãû‹8‡³£Ê‰1
+l
+java:S1128,"ORemove this unused import 'org.apache.flink.streaming.api.windowing.time.Time'.(’Ãü¹8‡³£Ê‰1
+u
+java:S1128-"XRemove this unused import 'org.apache.flink.streaming.api.windowing.windows.TimeWindow'.(Ð÷…Ó8‡³£Ê‰1
+T
+java:S11280"2Remove this unused import 'javax.xml.crypto.Data'.(¦¿çˆýÿÿÿÿ8‡³£Ê‰1
+M
+java:S11281"0Remove this unused import 'java.util.ArrayList'.(÷‰îƒ8‡³£Ê‰1
+L
+java:S11282"*Remove this unused import 'java.util.Map'.(¼è½Òþÿÿÿÿ8‡³£Ê‰1
