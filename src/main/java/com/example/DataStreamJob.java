@@ -73,13 +73,10 @@ public class DataStreamJob {
                 .build();
         DataStream<String> kafkaConsumer = env.fromSource(source, WatermarkStrategy.noWatermarks(), "Kafka Source");
 
-        kafkaConsumer.print();
-
         DataStream<ObjectNode> jsonValue = kafkaConsumer.map(value -> {
+            System.out.println("Topic recieved from main kafka time: "+ System.currentTimeMillis());
             ObjectMapper objectMapper = new ObjectMapper();
-            ObjectNode fhrData = objectMapper.createObjectNode();
-            fhrData = (ObjectNode) objectMapper.readTree(value);
-            return fhrData;
+            return (ObjectNode) objectMapper.readTree(value);
         });
 
         DataStream<String> fhr1 = jsonValue.flatMap(new FlatMapFunction<ObjectNode, String>() {
@@ -101,6 +98,7 @@ public class DataStreamJob {
                 if(fhr1 != null && utrine != null){
                     list.add(fhr1);
                     list.add(utrine);
+                    System.out.println("Processed to DataStream fhr1"+ System.currentTimeMillis());
                     collector.collect(list.toString());
                 }
             }
@@ -125,6 +123,7 @@ public class DataStreamJob {
                 list.add(fhr2);
                 list.add(utrine);
                 collector.collect(list.toString());
+                System.out.println("Processed to DataStream fhr2"+ System.currentTimeMillis());
                 }
             }
         });
@@ -148,12 +147,13 @@ public class DataStreamJob {
                     list.add(fhr3);
                     list.add(utrine);
                     collector.collect(list.toString());
+                    System.out.println("Processed to DataStream fhr3"+ System.currentTimeMillis());
                 }
             }
         });
-        fhr1.print();
-        fhr2.print();
-        fhr3.print();
+//        fhr1.print();
+//        fhr2.print();
+//        fhr3.print();
         KafkaSink<String> fhr1Topic = KafkaSink
                 .<String>builder()
                 .setBootstrapServers("localhost:9092")
@@ -225,343 +225,46 @@ public class DataStreamJob {
         DataStream<String> fhr2Stream = env.fromSource(fhr2Source, WatermarkStrategy.noWatermarks(), "fhr2");
         DataStream<String> fhr3Stream = env.fromSource(fhr3Source, WatermarkStrategy.noWatermarks(), "fhr3");
 
-        DataStream<String> value123 = fhr1Stream.process(new ProcessFunction<String, String>() {
+        DataStream<String> value1 = fhr1Stream.process(new ProcessFunction<String, String>() {
             @Override
             public void processElement(String s, ProcessFunction<String, String>.Context context, Collector<String> collector) throws Exception {
+                System.out.println("After 2nd kafka inside process method fhr1" + System.currentTimeMillis());
                 RequestSpecification request = RestAssured.given();
                 request.header("Content-Type", "application/json");
                 request.body(s);
                 Response response = request.post("http://localhost:5000/");
                 collector.collect(response.getBody().asString());
-                System.out.println("hello" + s);
+                System.out.println(response.getBody().asString());
+//                System.out.println("fhr1 end time " + System.currentTimeMillis());
             }
         });
-        value123.print();
-
-//        DataStream<Integer> count1 = jsonValue.map(value -> {
-//            int c = 0;
-//            for (JsonNode component : value.get("component")) {
-//                String code = component.get("code").asText();
-//                if (code.equals("fhr1") || code.equals("fhr2") || code.equals("fhr3")){
-//                    c++;
-//                }
-//            }
-//            return c;
-//        });
-//
-////        System.out.println(val);
-//
-//       jsonValue.flatMap(new FlatMapFunction<ObjectNode, ArrayList<String>>() {
-//            @Override
-//            public void flatMap(ObjectNode jsonNodes, Collector<ArrayList<String>> collector) throws Exception {
-//                int count = 0;
-//                for (JsonNode component : jsonNodes.get("component")) {
-//                    String code = component.get("code").asText();
-//                    if (code.equals("fhr1") || code.equals("fhr2") || code.equals("fhr3")){
-//                        count++;
-//                    }
-//                }
-//
-//                switch (count){
-//                    case 1:
-//                        for (JsonNode component : jsonNodes.get("component")) {
-//                            String code = component.get("code").asText();
-//                            if (code.equals("fhr1")){
-//                                String fhr1 = component.get("code").asText();
-//                                //TODO call to kafka producer
-//                            }
-//                        }
-//                        break;
-//                    case 2:
-//                        for (JsonNode component : jsonNodes.get("component")) {
-//                            String code = component.get("code").asText();
-//                            if (code.equals("fhr1")){
-//                                String fhr1 = component.get("code").asText();
-//                                //TODO call to kafka producer
-//                            }
-//                            if (code.equals("fhr2")){
-//                                String fhr2 = component.get("code").asText();
-//                                //TODO call to kafka producer
-//                            }
-//                        }
-//                        break;
-//                    case 3:
-//                        String fhr1 = null, fhr2 = null, fhr3 = null, utrine = null;
-//                        for(JsonNode component : jsonNodes.get("component")){
-//                            String code = component.get("code").asText();
-//                            if (code.equals("fhr1")){
-//                                fhr1 = component.get("hr").toString();
-//                                //TODO call to kafka producer
-//
-////                                env.fromElements(fhr1).addSink((SinkFunction<String>) sink);
-//                            }
-//                            if (code.equals("fhr2")){
-//                                fhr2 = component.get("hr").toString();
-//                                //TODO call to kafka producer
-//                            }
-//                            if (code.equals("fhr3")){
-//                                fhr3 = component.get("hr").toString();
-//                                //TODO call to kafka producer
-//                            }
-//                            if(code.equals("utrine")){
-//                                utrine = component.get("value").toString();
-//                                //TODO call to kafka producer
-//                            }
-//                        }
-//                        ArrayList<String> fhr = new ArrayList<>();
-//                        fhr.add(fhr1);
-////                        fhr.add(fhr2);
-////                        fhr.add(fhr3);
-////                        fhr.add(utrine);
-//                        collector.collect(fhr);
-//
-//                        break;
-//                }
-//            }
-//        }).print();
-//
-//        DataStream<ArrayList<String>> fhr1 = jsonValue.flatMap(new FlatMapFunction<ObjectNode, ArrayList<String>>() {
-//            @Override
-//            public void flatMap(ObjectNode jsonNodes, Collector<ArrayList<String>> collector) throws Exception {
-//                int count = 0;
-//                for (JsonNode component : jsonNodes.get("component")) {
-//                    String code = component.get("code").asText();
-//                    if (code.equals("fhr1") || code.equals("fhr2") || code.equals("fhr3")){
-//                        count++;
-//                    }
-//                }
-//
-//                switch (count){
-//                    case 1:
-//                        for (JsonNode component : jsonNodes.get("component")) {
-//                            String code = component.get("code").asText();
-//                            if (code.equals("fhr1")){
-//                                String fhr1 = component.get("code").asText();
-//                                //TODO call to kafka producer
-//                            }
-//                        }
-//                        break;
-//                    case 2:
-//                        for (JsonNode component : jsonNodes.get("component")) {
-//                            String code = component.get("code").asText();
-//                            if (code.equals("fhr1")){
-//                                String fhr1 = component.get("code").asText();
-//                                //TODO call to kafka producer
-//                            }
-//                            if (code.equals("fhr2")){
-//                                String fhr2 = component.get("code").asText();
-//                                //TODO call to kafka producer
-//                            }
-//                        }
-//                        break;
-//                    case 3:
-//                        String fhr1 = null, fhr2 = null, fhr3 = null, utrine = null;
-//                        for(JsonNode component : jsonNodes.get("component")){
-//                            String code = component.get("code").asText();
-//                            if (code.equals("fhr1")){
-//                                fhr1 = component.get("hr").toString();
-//                                //TODO call to kafka producer
-//
-////                                env.fromElements(fhr1).addSink((SinkFunction<String>) sink);
-//                            }
-//                            if (code.equals("fhr2")){
-//                                fhr2 = component.get("hr").toString();
-//                                //TODO call to kafka producer
-//                            }
-//                            if (code.equals("fhr3")){
-//                                fhr3 = component.get("hr").toString();
-//                                //TODO call to kafka producer
-//                            }
-//                            if(code.equals("utrine")){
-//                                utrine = component.get("value").toString();
-//                                //TODO call to kafka producer
-//                            }
-//                        }
-//                        ArrayList<String> fhr = new ArrayList<>();
-//                        fhr.add(fhr1);
-////                        fhr.add(fhr2);
-////                        fhr.add(fhr3);
-////                        fhr.add(utrine);
-//                        collector.collect(fhr);
-//
-//                        break;
-//                }
-//            }
-//        });
-//        DataStream<ArrayList<String>> fhr2 = jsonValue.flatMap(new FlatMapFunction<ObjectNode, ArrayList<String>>() {
-//            @Override
-//            public void flatMap(ObjectNode jsonNodes, Collector<ArrayList<String>> collector) throws Exception {
-//                int count = 0;
-//                for (JsonNode component : jsonNodes.get("component")) {
-//                    String code = component.get("code").asText();
-//                    if (code.equals("fhr1") || code.equals("fhr2") || code.equals("fhr3")){
-//                        count++;
-//                    }
-//                }
-//
-//                switch (count){
-//                    case 1:
-//                        for (JsonNode component : jsonNodes.get("component")) {
-//                            String code = component.get("code").asText();
-//                            if (code.equals("fhr1")){
-//                                String fhr1 = component.get("code").asText();
-//                                //TODO call to kafka producer
-//                            }
-//                        }
-//                        break;
-//                    case 2:
-//                        for (JsonNode component : jsonNodes.get("component")) {
-//                            String code = component.get("code").asText();
-//                            if (code.equals("fhr1")){
-//                                String fhr1 = component.get("code").asText();
-//                                //TODO call to kafka producer
-//                            }
-//                            if (code.equals("fhr2")){
-//                                String fhr2 = component.get("code").asText();
-//                                //TODO call to kafka producer
-//                            }
-//                        }
-//                        break;
-//                    case 3:
-//                        String fhr1 = null, fhr2 = null, fhr3 = null, utrine = null;
-//                        for(JsonNode component : jsonNodes.get("component")){
-//                            String code = component.get("code").asText();
-//                            if (code.equals("fhr1")){
-//                                fhr1 = component.get("hr").toString();
-//                                //TODO call to kafka producer
-//
-////                                env.fromElements(fhr1).addSink((SinkFunction<String>) sink);
-//                            }
-//                            if (code.equals("fhr2")){
-//                                fhr2 = component.get("hr").toString();
-//                                //TODO call to kafka producer
-//                            }
-//                            if (code.equals("fhr3")){
-//                                fhr3 = component.get("hr").toString();
-//                                //TODO call to kafka producer
-//                            }
-//                            if(code.equals("utrine")){
-//                                utrine = component.get("value").toString();
-//                                //TODO call to kafka producer
-//                            }
-//                        }
-//                        ArrayList<String> fhr = new ArrayList<>();
-////                        fhr.add(fhr1);
-//                        fhr.add(fhr2);
-////                        fhr.add(fhr3);
-////                        fhr.add(utrine);
-//                        collector.collect(fhr);
-//
-//                        break;
-//                }
-//            }
-//        });
-//        DataStream<ArrayList<String>> fhr3 = jsonValue.flatMap(new FlatMapFunction<ObjectNode, ArrayList<String>>() {
-//            @Override
-//            public void flatMap(ObjectNode jsonNodes, Collector<ArrayList<String>> collector) throws Exception {
-//                int count = 0;
-//                for (JsonNode component : jsonNodes.get("component")) {
-//                    String code = component.get("code").asText();
-//                    if (code.equals("fhr1") || code.equals("fhr2") || code.equals("fhr3")){
-//                        count++;
-//                    }
-//                }
-//
-//                switch (count){
-//                    case 1:
-//                        for (JsonNode component : jsonNodes.get("component")) {
-//                            String code = component.get("code").asText();
-//                            if (code.equals("fhr1")){
-//                                String fhr1 = component.get("code").asText();
-//                                //TODO call to kafka producer
-//                            }
-//                        }
-//                        break;
-//                    case 2:
-//                        for (JsonNode component : jsonNodes.get("component")) {
-//                            String code = component.get("code").asText();
-//                            if (code.equals("fhr1")){
-//                                String fhr1 = component.get("code").asText();
-//                                //TODO call to kafka producer
-//                            }
-//                            if (code.equals("fhr2")){
-//                                String fhr2 = component.get("code").asText();
-//                                //TODO call to kafka producer
-//                            }
-//                        }
-//                        break;
-//                    case 3:
-//                        String fhr1 = null, fhr2 = null, fhr3 = null, utrine = null;
-//                        for(JsonNode component : jsonNodes.get("component")){
-//                            String code = component.get("code").asText();
-//                            if (code.equals("fhr1")){
-//                                fhr1 = component.get("hr").toString();
-//                                //TODO call to kafka producer
-//
-////                                env.fromElements(fhr1).addSink((SinkFunction<String>) sink);
-//                            }
-//                            if (code.equals("fhr2")){
-//                                fhr2 = component.get("hr").toString();
-//                                //TODO call to kafka producer
-//                            }
-//                            if (code.equals("fhr3")){
-//                                fhr3 = component.get("hr").toString();
-//                                //TODO call to kafka producer
-//                            }
-//                            if(code.equals("utrine")){
-//                                utrine = component.get("value").toString();
-//                                //TODO call to kafka producer
-//                            }
-//                        }
-//                        ArrayList<String> fhr = new ArrayList<>();
-////                        fhr.add(fhr1);
-////                        fhr.add(fhr2);
-//                        fhr.add(fhr3);
-////                        fhr.add(utrine);
-//                        collector.collect(fhr);
-//
-//                        break;
-//                }
-//            }
-//        });
-        /*
-        DataStream<Double> doubleDataStream = kafkaConsumer.map(value -> {
-            try {
-                return Double.parseDouble(value);
-            } catch (NumberFormatException e) {
-                return 240.0;
-            }
-        });
-
-        DataStream<String> output = doubleDataStream.windowAll(SlidingProcessingTimeWindows.of(Time.seconds(10), Time.seconds(5))).apply(new AllWindowFunction<Double, String, TimeWindow>() {
+        DataStream<String> value2 = fhr2Stream.process(new ProcessFunction<String, String>() {
             @Override
-            public void apply(TimeWindow timeWindow, Iterable<Double> iterable, Collector<String> collector) throws Exception {
-                long time = System.currentTimeMillis();
-                ArrayList<Double> list = new ArrayList<>();
-                for (Double s : iterable) {
-                    list.add(s);
-                }
+            public void processElement(String s, ProcessFunction<String, String>.Context context, Collector<String> collector) throws Exception {
+                System.out.println("After 2nd kafka inside process method fhr2" + System.currentTimeMillis());
                 RequestSpecification request = RestAssured.given();
                 request.header("Content-Type", "application/json");
-                request.body(list.toString());
-//                long time = System.currentTimeMillis();
-                System.out.println("Time is taken" + (System.currentTimeMillis() - time) + "ms \n \n \n");
-                Response response = request.post("http://localhost:5000/");
+                request.body(s);
+                Response response = request.post("http://localhost:2000/");
                 collector.collect(response.getBody().asString());
-                collector.collect(list.toString());
-
+                System.out.println(response.getBody().asString());
+//                System.out.println("fhr2 end time " + System.currentTimeMillis());
+            }
+        });
+        DataStream<String> value3 = fhr3Stream.process(new ProcessFunction<String, String>() {
+            @Override
+            public void processElement(String s, ProcessFunction<String, String>.Context context, Collector<String> collector) throws Exception {
+                System.out.println("After 2nd kafka inside process method fhr3 " + System.currentTimeMillis());
+                RequestSpecification request = RestAssured.given();
+                request.header("Content-Type", "application/json");
+                request.body(s);
+                Response response = request.post("http://localhost:3000/");
+                collector.collect(response.getBody().asString());
+                System.out.println(response.getBody().asString());
+//                System.out.println("fhr3 end time " + System.currentTimeMillis());
             }
         });
 
-
-
-
-        output.print();
-        /*kafkaProducer*/
-//        KafkaSink<String> sink = KafkaSink.<String>builder().setBootstrapServers("localhost:9092").setRecordSerializer(KafkaRecordSerializationSchema.builder().setTopic("output-topic").setValueSerializationSchema(new SimpleStringSchema()).build()).setDeliveryGuarantee(DeliveryGuarantee.AT_LEAST_ONCE).build();
-//        output.sinkTo(sink);
-
-        // Execute program, beginning computation.
         env.execute("Flink Java API Skeleton");
     }
 }
