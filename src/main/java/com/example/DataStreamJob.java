@@ -235,7 +235,7 @@ public class DataStreamJob {
                 Response response = request.post("http://localhost:5000/");
                 collector.collect(response.getBody().asString());
                 System.out.println(response.getBody().asString());
-//                System.out.println("fhr1 end time " + System.currentTimeMillis());
+                System.out.println("fhr1 end time " + System.currentTimeMillis());
             }
         });
         DataStream<String> value2 = fhr2Stream.process(new ProcessFunction<String, String>() {
@@ -248,7 +248,7 @@ public class DataStreamJob {
                 Response response = request.post("http://localhost:2000/");
                 collector.collect(response.getBody().asString());
                 System.out.println(response.getBody().asString());
-//                System.out.println("fhr2 end time " + System.currentTimeMillis());
+                System.out.println("fhr2 end time " + System.currentTimeMillis());
             }
         });
         DataStream<String> value3 = fhr3Stream.process(new ProcessFunction<String, String>() {
@@ -261,7 +261,7 @@ public class DataStreamJob {
                 Response response = request.post("http://localhost:3000/");
                 collector.collect(response.getBody().asString());
                 System.out.println(response.getBody().asString());
-//                System.out.println("fhr3 end time " + System.currentTimeMillis());
+                System.out.println("fhr3 end time " + System.currentTimeMillis());
             }
         });
 
