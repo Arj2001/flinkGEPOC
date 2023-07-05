@@ -59,12 +59,29 @@ public class DataStreamJob {
         // Sets up the execution environment, which is the main entry point
         // to building Flink applications.
         final StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
+//        DataStream<String> newStream = env.fromElements("Hello World");
+//        newStream.map(value -> {
+//            try {
+//                String pythonInterpreter = "python3";
+//                // Path to the Python script you want to execute. Update it with the correct path.
+//                String pythonScript = "app.py";
+//
+//                // Create the ProcessBuilder instance with the Python command and script arguments
+//                ProcessBuilder processBuilder = new ProcessBuilder(pythonInterpreter, pythonScript);
+//
+//                // Start the Python process
+//                Process process = processBuilder.start();
+//            } catch (Exception e) {
+//                e.printStackTrace();
+//            }
+//            return value;
+//        });
 
 //        env.setParallelism(3);
         /*Kafka consumer*/
         KafkaSource<String> source = KafkaSource
                 .<String>builder()
-                .setBootstrapServers("localhost:9092")
+                .setBootstrapServers("172.21.89.248:9092")
                 .setTopics("input-topic")
                 .setGroupId("my-group")
                 .setStartingOffsets(
@@ -74,6 +91,7 @@ public class DataStreamJob {
         DataStream<String> kafkaConsumer = env.fromSource(source, WatermarkStrategy.noWatermarks(), "Kafka Source");
 
         DataStream<ObjectNode> jsonValue = kafkaConsumer.map(value -> {
+
             System.out.println("Topic recieved from main kafka time: "+ System.currentTimeMillis());
             ObjectMapper objectMapper = new ObjectMapper();
             return (ObjectNode) objectMapper.readTree(value);
@@ -156,7 +174,7 @@ public class DataStreamJob {
 //        fhr3.print();
         KafkaSink<String> fhr1Topic = KafkaSink
                 .<String>builder()
-                .setBootstrapServers("localhost:9092")
+                .setBootstrapServers("172.21.89.248:9092")
                 .setRecordSerializer(
                         KafkaRecordSerializationSchema
                                 .builder()
@@ -168,7 +186,7 @@ public class DataStreamJob {
                 .build();
         KafkaSink<String> fhr2Topic = KafkaSink
                 .<String>builder()
-                .setBootstrapServers("localhost:9092")
+                .setBootstrapServers("172.21.89.248:9092")
                 .setRecordSerializer(
                         KafkaRecordSerializationSchema
                                 .builder()
@@ -180,7 +198,7 @@ public class DataStreamJob {
                 .build();
         KafkaSink<String> fhr3Topic = KafkaSink
                 .<String>builder()
-                .setBootstrapServers("localhost:9092")
+                .setBootstrapServers("172.21.89.248:9092")
                 .setRecordSerializer(
                         KafkaRecordSerializationSchema
                                 .builder()
@@ -196,7 +214,7 @@ public class DataStreamJob {
 
         KafkaSource<String> fhr1Source = KafkaSource
                 .<String>builder()
-                .setBootstrapServers("localhost:9092")
+                .setBootstrapServers("172.21.89.248:9092")
                 .setTopics("fhr1")
                 .setGroupId("my-group")
                 .setStartingOffsets(
@@ -205,7 +223,7 @@ public class DataStreamJob {
                 .build();
         KafkaSource<String> fhr2Source = KafkaSource
                 .<String>builder()
-                .setBootstrapServers("localhost:9092")
+                .setBootstrapServers("172.21.89.248:9092")
                 .setTopics("fhr2")
                 .setGroupId("my-group")
                 .setStartingOffsets(
@@ -214,7 +232,7 @@ public class DataStreamJob {
                 .build();
         KafkaSource<String> fhr3Source = KafkaSource
                 .<String>builder()
-                .setBootstrapServers("localhost:9092")
+                .setBootstrapServers("172.21.89.248:9092")
                 .setTopics("fhr3")
                 .setGroupId("my-group")
                 .setStartingOffsets(
@@ -225,45 +243,49 @@ public class DataStreamJob {
         DataStream<String> fhr2Stream = env.fromSource(fhr2Source, WatermarkStrategy.noWatermarks(), "fhr2");
         DataStream<String> fhr3Stream = env.fromSource(fhr3Source, WatermarkStrategy.noWatermarks(), "fhr3");
 
-        DataStream<String> value1 = fhr1Stream.process(new ProcessFunction<String, String>() {
+        fhr1Stream.process(new ProcessFunction<String, String>() {
             @Override
             public void processElement(String s, ProcessFunction<String, String>.Context context, Collector<String> collector) throws Exception {
                 System.out.println("After 2nd kafka inside process method fhr1" + System.currentTimeMillis());
                 RequestSpecification request = RestAssured.given();
                 request.header("Content-Type", "application/json");
                 request.body(s);
-                Response response = request.post("http://localhost:5000/");
-                collector.collect(response.getBody().asString());
-                System.out.println(response.getBody().asString());
-                System.out.println("fhr1 end time " + System.currentTimeMillis());
+                try {
+                    Response response = request.post("http://0.0.0.0:5000/");
+                    collector.collect(response.getBody().asString());
+                    System.out.println(response.getBody().asString());
+                    System.out.println("fhr1 end time " + System.currentTimeMillis());
+                }catch (Exception e){
+                    System.out.println(e + "post is not working");
+                }
             }
         });
-        DataStream<String> value2 = fhr2Stream.process(new ProcessFunction<String, String>() {
-            @Override
-            public void processElement(String s, ProcessFunction<String, String>.Context context, Collector<String> collector) throws Exception {
-                System.out.println("After 2nd kafka inside process method fhr2" + System.currentTimeMillis());
-                RequestSpecification request = RestAssured.given();
-                request.header("Content-Type", "application/json");
-                request.body(s);
-                Response response = request.post("http://localhost:2000/");
-                collector.collect(response.getBody().asString());
-                System.out.println(response.getBody().asString());
-                System.out.println("fhr2 end time " + System.currentTimeMillis());
-            }
-        });
-        DataStream<String> value3 = fhr3Stream.process(new ProcessFunction<String, String>() {
-            @Override
-            public void processElement(String s, ProcessFunction<String, String>.Context context, Collector<String> collector) throws Exception {
-                System.out.println("After 2nd kafka inside process method fhr3 " + System.currentTimeMillis());
-                RequestSpecification request = RestAssured.given();
-                request.header("Content-Type", "application/json");
-                request.body(s);
-                Response response = request.post("http://localhost:3000/");
-                collector.collect(response.getBody().asString());
-                System.out.println(response.getBody().asString());
-                System.out.println("fhr3 end time " + System.currentTimeMillis());
-            }
-        });
+//        fhr2Stream.process(new ProcessFunction<String, String>() {
+//            @Override
+//            public void processElement(String s, ProcessFunction<String, String>.Context context, Collector<String> collector) throws Exception {
+//                System.out.println("After 2nd kafka inside process method fhr2" + System.currentTimeMillis());
+//                RequestSpecification request = RestAssured.given();
+//                request.header("Content-Type", "application/json");
+//                request.body(s);
+//                Response response = request.post("http://172.24.59.26:2000/");
+//                collector.collect(response.getBody().asString());
+//                System.out.println(response.getBody().asString());
+//                System.out.println("fhr2 end time " + System.currentTimeMillis());
+//            }
+//        });
+//        fhr3Stream.process(new ProcessFunction<String, String>() {
+//            @Override
+//            public void processElement(String s, ProcessFunction<String, String>.Context context, Collector<String> collector) throws Exception {
+//                System.out.println("After 2nd kafka inside process method fhr3 " + System.currentTimeMillis());
+//                RequestSpecification request = RestAssured.given();
+//                request.header("Content-Type", "application/json");
+//                request.body(s);
+//                Response response = request.post("http://172.24.59.26:3000/");
+//                collector.collect(response.getBody().asString());
+//                System.out.println(response.getBody().asString());
+//                System.out.println("fhr3 end time " + System.currentTimeMillis());
+//            }
+//        });
 
         env.execute("Flink Java API Skeleton");
     }
